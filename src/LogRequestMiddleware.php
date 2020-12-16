@@ -1,6 +1,7 @@
 <?php namespace Zipzoft\HttpLogger;
 
 use Closure;
+use Exception;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 
@@ -51,9 +52,11 @@ class LogRequestMiddleware
     }
 
     /**
-     * @param \Exception $exception
+     * @param Exception $exception
+     * @param \Illuminate\Http\Request  $request
+     * @param \Symfony\Component\HttpFoundation\Response $response
      */
-    protected function handleExceptions(\Exception $exception)
+    protected function handleExceptions(Exception $exception, $request, $response)
     {
         //
     }
@@ -67,7 +70,7 @@ class LogRequestMiddleware
         try {
             $this->writer->handle($request, $response);
         } catch (\Exception $exception) {
-            $this->handleExceptions($exception);
+            $this->handleExceptions($exception, $request, $response);
         }
     }
 
@@ -75,10 +78,20 @@ class LogRequestMiddleware
      * @param Request $request
      * @return bool
      */
-    private function shouldLogRequest(Request $request)
+    protected function shouldLogRequest(Request $request)
     {
         foreach ($this->config->get('http-logger.ignore.methods') ?: [] as $method) {
             if ($request->isMethod($method)) {
+                return false;
+            }
+        }
+
+        foreach ($this->config->get('http-logger.ignore.paths') ?: [] as $path) {
+            if ($path !== '/') {
+                $path = trim($path, '/');
+            }
+
+            if ($request->fullUrlIs($path) || $request->is($path)) {
                 return false;
             }
         }
