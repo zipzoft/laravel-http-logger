@@ -13,6 +13,10 @@ class HttpLoggerServiceProvider extends ServiceProvider
     public function register()
     {
         $this->mergeConfigFrom(__DIR__.'/../config.php', 'http-logger');
+
+        $this->app->singleton(Writer::class, function($app) {
+            return (new Manager($app))->driver();
+        });
     }
 
 
@@ -23,9 +27,5 @@ class HttpLoggerServiceProvider extends ServiceProvider
                 __DIR__.'/../config.php' => config_path('http-logger.php'),
             ], 'config');
         }
-
-        $this->app->bind(Writer::class, function($app) {
-            return (new Manager($app))->driver();
-        });
     }
 }
