@@ -2,12 +2,14 @@
 
 use Elasticsearch\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Jenssegers\Agent\Agent;
 
 class ElasticsearchWriter implements Writer
 {
+
     /**
      * @var Client
      */
@@ -16,12 +18,12 @@ class ElasticsearchWriter implements Writer
     /**
      * @var array
      */
-    private array $config;
+    protected array $config;
 
     /**
      * @var Agent
      */
-    private Agent $agent;
+    protected Agent $agent;
 
     /**
      * ElasticsearchLoggerDriver constructor.
@@ -49,24 +51,11 @@ class ElasticsearchWriter implements Writer
             'method' => $request->method(),
             'ip_address' => $request->ip(),
             'request' => [
-                'headers' => $request->headers->all(),
-                'body' => $request->all(),
+                'headers' => $this->headers($request),
+                'body' => $this->requestBody($request),
             ],
             'created_at' => now()->toIso8601String(),
-            'agent' => [
-                'user_agent' => $request->userAgent(),
-                'languages' => $this->agent->languages(),
-                'device' => $this->agent->device(),
-                'platform' => [
-                    'name' => $this->agent->platform(),
-                    'version' => $this->agent->version($this->agent->platform()),
-                ],
-                'browser' => [
-                    'name' => $this->agent->browser(),
-                    'version' => $this->agent->version($this->agent->browser()),
-                ],
-                'robot' => $this->agent->robot(),
-            ],
+            'agent' => $this->agent($request),
         ];
 
         if ($request->user()) {
@@ -131,5 +120,47 @@ class ElasticsearchWriter implements Writer
     protected function withOptions(array $body)
     {
         return [];
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    protected function agent(Request $request)
+    {
+        return [
+            'user_agent' => $request->userAgent(),
+            'languages' => $this->agent->languages(),
+            'device' => $this->agent->device(),
+            'platform' => [
+                'name' => $this->agent->platform(),
+                'version' => $this->agent->version($this->agent->platform()),
+            ],
+            'browser' => [
+                'name' => $this->agent->browser(),
+                'version' => $this->agent->version($this->agent->browser()),
+            ],
+            'robot' => $this->agent->robot(),
+        ];
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    protected function headers(Request $request)
+    {
+        return Arr::except($request->headers->all(), [
+            'cookie', 'x-csrf-token', 'x-xsrf-token',
+        ]);
+    }
+
+    /**
+     * @param Request $request
+     * @return array
+     */
+    protected function requestBody(Request $request)
+    {
+        return $request->all();
     }
 }
