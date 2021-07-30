@@ -22,7 +22,14 @@ class Manager extends LaravelManager
             throw new \InvalidArgumentException("Http logger need install elasticsearch/elasticsearch first");
         }
 
-        return $this->container->make(ElasticsearchWriter::class);
+        $config = $this->config->get('http-logger.writers.elasticsearch');
+
+        $writerClass = $config['writer'] ?? ElasticsearchWriter::class;
+
+        return new $writerClass(
+            $this->container->make('Elasticsearch\Client'),
+            $config,
+        );
     }
 
     /**
